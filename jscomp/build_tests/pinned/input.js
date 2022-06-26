@@ -1,6 +1,6 @@
 var cp = require("child_process");
 var assert = require("assert");
-var rescript_exe = require("../../../scripts/bin_path").rescript_exe;
+var fs = require("fs");
 function checkSpawnOut(out) {
   if (out.error) {
     throw out.error;
@@ -11,13 +11,13 @@ function checkSpawnOut(out) {
 }
 
 // Clean beforehand to force its dependency to be rebuilt
-var out = cp.spawnSync(`${rescript_exe} clean`, {
+var out = cp.spawnSync(`../node_modules/.bin/rescript clean`, {
   encoding: "utf-8",
   shell: true,
 });
 checkSpawnOut(out);
 
-var out = cp.spawnSync(`${rescript_exe} build`, {
+var out = cp.spawnSync(`../node_modules/.bin/rescript build`, {
   encoding: "utf-8",
   shell: true,
 });
@@ -29,7 +29,7 @@ assert.ok(
 );
 
 var out2 = cp.spawnSync(
-  `${rescript_exe} build -- -C node_modules/test/lib/bs/ -t targets`,
+  `../node_modules/.bin/rescript build -- -C node_modules/test/lib/bs/ -t targets`,
   {
     encoding: "utf-8",
     shell: true,
