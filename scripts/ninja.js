@@ -28,10 +28,12 @@ var js_package = pseudoTarget("js_pkg");
 var runtimeTarget = pseudoTarget("runtime");
 var othersTarget = pseudoTarget("others");
 var stdlibTarget = pseudoTarget("$stdlib");
-var my_target = require("./bin_path").folder;
-var bsc_exe = require("./bin_path").bsc_exe;
+var my_target =
+  process.platform === "darwin" && process.arch === "arm64"
+    ? process.platform + process.arch
+    : process.platform;
 
-var vendorNinjaPath = require("./bin_path").ninja_exe;
+var vendorNinjaPath = path.join(__dirname, "..", my_target, "ninja.exe");
 
 // Let's enforce a Node version >= 16 to make sure M1 users don't trip up on
 // cryptic issues caused by mismatching assembly architectures Node 16 ships
@@ -664,7 +666,7 @@ function depModulesForBscAsync(files, dir, depsMap) {
   return [
     new Promise((resolve, reject) => {
       cp.exec(
-        `${bsc_exe}  -modules -bs-syntax-only ${resFiles.join(
+        `../../${my_target}/bsc.exe  -modules -bs-syntax-only ${resFiles.join(
           " "
         )} ${reFiles.join(" ")} ${ocamlFiles.join(" ")}`,
         config,
@@ -852,7 +854,7 @@ function generateNinja(depsMap, allTargets, cwd, extraDeps = []) {
   return build_stmts;
 }
 
-var COMPILIER = bsc_exe;
+var COMPILIER = `../${my_target}/bsc.exe`;
 var BSC_COMPILER = `bsc = ${COMPILIER}`;
 
 async function runtimeNinja(devmode = true) {
@@ -1404,7 +1406,7 @@ include body.ninja
   nativeNinja();
   runtimeNinja();
   stdlibNinja(true);
-  if (fs.existsSync(bsc_exe)) {
+  if (fs.existsSync(path.join(__dirname, "..", my_target, "bsc.exe"))) {
     testNinja();
   }
   othersNinja();
@@ -1728,14 +1730,14 @@ o core/js_record_map.ml: p4of core/j.ml
 o core/js_record_fold.ml: p4of core/j.ml
     flags = -record-fold
 
-o ${my_target}/bsc.exe: link  ${makeLibs(
+o ../${my_target}/bsc.exe: link  ${makeLibs(
     bsc_libs
   )} main/rescript_compiler_main.cmx
-o ${my_target}/rescript.exe: link ${makeLibs(
+o ../${my_target}/rescript.exe: link ${makeLibs(
     rescript_libs
   )} main/rescript_main.cmx
       libs =  unix.cmxa str.cmxa    
-o ${my_target}/bsb_helper.exe: link ${makeLibs(
+o ../${my_target}/bsb_helper.exe: link ${makeLibs(
     bsb_helper_libs
   )} main/bsb_helper_main.cmx
     libs =  unix.cmxa str.cmxa
@@ -1748,7 +1750,7 @@ o ./bin/cmij.exe: link ${makeLibs(cmij_libs)} main/cmij_main.cmx
     
 o ./bin/tests.exe: link ${makeLibs(tests_libs)} main/ounit_tests_main.cmx
     libs = str.cmxa unix.cmxa 
-build native: phony ${my_target}/bsc.exe ${my_target}/rescript.exe ${my_target}/bsb_helper.exe ./bin/bspack.exe ./bin/cmjdump.exe ./bin/cmij.exe ./bin/tests.exe
+build native: phony ../${my_target}/bsc.exe ../${my_target}/rescript.exe ../${my_target}/bsb_helper.exe ./bin/bspack.exe ./bin/cmjdump.exe ./bin/cmij.exe ./bin/tests.exe
 
 
 ${mllRule}

@@ -3,7 +3,7 @@ const path = require('path')
 const child_process = require('child_process')
 
 
-var bsc = require("../../../scripts/bin_path").bsc_exe;
+var  bsc = path.join(__dirname,'..','..','..','bsc')
 // var  refmt = path.join(__dirname,'..','..','..','lib','refmt.exe')
 
 

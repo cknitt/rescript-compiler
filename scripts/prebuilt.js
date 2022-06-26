@@ -52,7 +52,13 @@ function rebuild() {
 }
 
 var use_env_compiler = process.argv.includes("-use-env-compiler");
-var bin_path = require("./bin_path").folder;
+var bin_path = path.join(
+  __dirname,
+  "..",
+  process.platform === "darwin" && process.arch === "arm64"
+    ? process.platform + process.arch
+    : process.platform
+);
 
 function buildCompiler() {
   var prebuilt = "prebuilt.ninja";
