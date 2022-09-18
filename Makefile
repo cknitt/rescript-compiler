@@ -1,6 +1,9 @@
 SHELL = /bin/bash
 
-config:
+ninja/ninja:
+	./scripts/buildNinjaBinary.js
+	
+config: ninja/ninja
 	./scripts/ninja.js config
 
 build: config
