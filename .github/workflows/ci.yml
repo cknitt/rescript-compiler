@@ -13,7 +13,7 @@ jobs:
       matrix:
         # Stay on the oldest Ubuntu version that's still supported by Github Actions
         # to avoid glibc incompatibilities as far as possible.
-        os: [macos-latest, ubuntu-20.04, windows-latest, macos-arm]
+        os: [macos-latest, ubuntu-20.04, windows-latest]
         ocaml_compiler: [4.14.0]
 
     runs-on: ${{matrix.os}}
