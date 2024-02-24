@@ -20,86 +20,86 @@ env:
   OCAMLRUNPARAM: b
 
 jobs:
-  # Build statically linked Linux binaries in an Alpine-based Docker container
-  # See https://ocamlpro.com/blog/2021_09_02_generating_static_and_portable_executables_with_ocaml
-  # for more info.
-  # The container already comes with all required tools pre-installed
-  # (see https://github.com/rescript-lang/docker-rescript-ci-build/blob/main/Dockerfile).
-  static-binaries-linux:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, buildjet-2vcpu-ubuntu-2204-arm]
+  # # Build statically linked Linux binaries in an Alpine-based Docker container
+  # # See https://ocamlpro.com/blog/2021_09_02_generating_static_and_portable_executables_with_ocaml
+  # # for more info.
+  # # The container already comes with all required tools pre-installed
+  # # (see https://github.com/rescript-lang/docker-rescript-ci-build/blob/main/Dockerfile).
+  # static-binaries-linux:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest, buildjet-2vcpu-ubuntu-2204-arm]
 
-    runs-on: ${{matrix.os}}
+  #   runs-on: ${{matrix.os}}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Build compiler binaries
-        uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
-        with:
-          args: opam exec -- dune build --display quiet --profile static
+  #     - name: Build compiler binaries
+  #       uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+  #       with:
+  #         args: opam exec -- dune build --display quiet --profile static
 
-      - name: Build ninja binary
-        uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
-        env:
-          LDFLAGS: -static
-        with:
-          args: sh -c "cd ninja && LDFLAGS=-static python3 configure.py --bootstrap"
+  #     - name: Build ninja binary
+  #       uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+  #       env:
+  #         LDFLAGS: -static
+  #       with:
+  #         args: sh -c "cd ninja && LDFLAGS=-static python3 configure.py --bootstrap"
 
-      - name: "Upload artifacts"
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-binaries-linux-${{runner.arch}}
-          path: |
-            _build/install/default/bin
-            ninja/ninja
+  #     - name: "Upload artifacts"
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: static-binaries-linux-${{runner.arch}}
+  #         path: |
+  #           _build/install/default/bin
+  #           ninja/ninja
 
-  # The full build including tests does not work on Linux ARM because setup-ocaml fails.
-  # Therefore, only upload the binaries from the static build
-  upload-linux-arm64-binaries:
-    needs:
-      - static-binaries-linux
+  # # The full build including tests does not work on Linux ARM because setup-ocaml fails.
+  # # Therefore, only upload the binaries from the static build
+  # upload-linux-arm64-binaries:
+  #   needs:
+  #     - static-binaries-linux
 
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+  #   runs-on: buildjet-2vcpu-ubuntu-2204-arm
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Download static linux binaries
-        if: runner.os == 'Linux'
-        uses: actions/download-artifact@v4
-        with:
-          name: static-binaries-linux-${{ runner.arch }}
+  #     - name: Download static linux binaries
+  #       if: runner.os == 'Linux'
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: static-binaries-linux-${{ runner.arch }}
 
-      - name: Make static linux binaries executable
-        if: runner.os == 'Linux'
-        run: |
-          chmod +x ninja/ninja
-          chmod +x _build/install/default/bin/*
+  #     - name: Make static linux binaries executable
+  #       if: runner.os == 'Linux'
+  #       run: |
+  #         chmod +x ninja/ninja
+  #         chmod +x _build/install/default/bin/*
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 16
+  #     - name: Use Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 16
 
-      - name: Copy exes to platform bin dirs
-        run: node ./scripts/copyExes.js
+  #     - name: Copy exes to platform bin dirs
+  #       run: node ./scripts/copyExes.js
 
-      - name: Prepare artifact upload
-        run: node .github/workflows/get_artifact_info.js
+  #     - name: Prepare artifact upload
+  #       run: node .github/workflows/get_artifact_info.js
 
-      - name: "Upload artifacts: binaries"
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.artifact_name }}
-          path: ${{ env.artifact_path }}
+  #     - name: "Upload artifacts: binaries"
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ env.artifact_name }}
+  #         path: ${{ env.artifact_path }}
 
   build:
-    needs: static-binaries-linux
+    # needs: static-binaries-linux
 
     strategy:
       fail-fast: false
@@ -129,17 +129,17 @@ jobs:
         with:
           fetch-depth: 2 # to be able to check for changes in subfolder jscomp/syntax later
 
-      - name: Download static linux binaries
+      - name: "Linux: Build static compiler binaries"
         if: runner.os == 'Linux'
-        uses: actions/download-artifact@v4
+        uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
         with:
-          name: static-binaries-linux-${{ runner.arch }}
+          args: opam exec -- dune build --display quiet --profile static
 
-      - name: Make static linux binaries executable
+      - name: "Linux: Build static ninja binary"
         if: runner.os == 'Linux'
-        run: |
-          chmod +x ninja/ninja
-          chmod +x _build/install/default/bin/*
+        uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+        with:
+          args: sh -c "cd ninja && LDFLAGS=-static python3 configure.py --bootstrap"
 
       - name: Use OCaml ${{matrix.ocaml_compiler}}
         uses: ocaml/setup-ocaml@v2
