@@ -105,10 +105,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-            macos-13, # x64
-            macos-14, # ARM
+            # macos-13, # x64
+            # macos-14, # ARM
             ubuntu-latest,
-            windows-latest,
+            buildjet-2vcpu-ubuntu-2204-arm,
+            # windows-latest,
           ]
         ocaml_compiler: [5.1.1]
 
@@ -118,6 +119,8 @@ jobs:
       DUNE_PROFILE: release
 
     steps:
+      - run: id
+
       - name: "Windows: Set git to use LF"
         if: runner.os == 'Windows'
         run: |
@@ -133,13 +136,15 @@ jobs:
         if: runner.os == 'Linux'
         uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
         with:
-          args: opam exec -- dune build --display quiet --profile static
+          args: id
 
       - name: "Linux: Build static ninja binary"
         if: runner.os == 'Linux'
         uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
         with:
           args: sh -c "cd ninja && LDFLAGS=-static python3 configure.py --bootstrap"
+
+      - run: ls -l ninja/ninja
 
       - name: Use OCaml ${{matrix.ocaml_compiler}}
         uses: ocaml/setup-ocaml@v2
