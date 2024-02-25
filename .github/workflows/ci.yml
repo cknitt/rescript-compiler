@@ -20,100 +20,96 @@ env:
   OCAMLRUNPARAM: b
 
 jobs:
-  # Build statically linked Linux binaries in an Alpine-based Docker container
-  # See https://ocamlpro.com/blog/2021_09_02_generating_static_and_portable_executables_with_ocaml
-  # for more info.
-  # The container already comes with all required tools pre-installed
-  # (see https://github.com/rescript-lang/docker-rescript-ci-build/blob/main/Dockerfile).
-  static-binaries-linux:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, buildjet-2vcpu-ubuntu-2204-arm]
+  # # Build statically linked Linux binaries in an Alpine-based Docker container
+  # # See https://ocamlpro.com/blog/2021_09_02_generating_static_and_portable_executables_with_ocaml
+  # # for more info.
+  # # The container already comes with all required tools pre-installed
+  # # (see https://github.com/rescript-lang/docker-rescript-ci-build/blob/main/Dockerfile).
+  # static-binaries-linux:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest, buildjet-2vcpu-ubuntu-2204-arm]
 
-    runs-on: ${{matrix.os}}
+  #   runs-on: ${{matrix.os}}
 
-    container:
-      image: ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-    steps:
-      # See https://github.com/actions/runner/issues/801#issuecomment-1374967227.
-      - name: Workaround for Github actions runner on Alpine arm64
-        if: runner.arch	== 'ARM64'
-        run: sed -i "s:ID=alpine:ID=NotpineForGHA:" /etc/os-release
+  #     - name: Build compiler binaries
+  #       uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+  #       with:
+  #         args: opam exec -- dune build --display quiet --profile static
 
-      - name: Checkout
-        uses: actions/checkout@v3
+  #     - name: Build ninja binary
+  #       uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+  #       env:
+  #         LDFLAGS: -static
+  #       with:
+  #         args: sh -c "cd ninja && LDFLAGS=-static python3 configure.py --bootstrap"
 
-      - name: Build compiler binaries
-        run: opam exec -- dune build --display quiet --profile static
+  #     - name: "Upload artifacts"
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: static-binaries-linux-${{runner.arch}}
+  #         path: |
+  #           _build/install/default/bin
+  #           ninja/ninja
 
-      - name: Build ninja binary
-        working-directory: ninja
-        env:
-          LDFLAGS: -static
-        run: python3 configure.py --bootstrap --verbose
+  # # The full build including tests does not work on Linux ARM because setup-ocaml fails.
+  # # Therefore, only upload the binaries from the static build
+  # upload-linux-arm64-binaries:
+  #   needs:
+  #     - static-binaries-linux
 
-      - name: "Upload artifacts"
-        uses: actions/upload-artifact@v3
-        with:
-          name: static-binaries-linux-${{runner.arch}}
-          path: |
-            _build/install/default/bin
-            ninja/ninja
+  #   runs-on: buildjet-2vcpu-ubuntu-2204-arm
 
-  # The full build including tests does not work on Linux ARM because setup-ocaml fails.
-  # Therefore, only upload the binaries from the static build
-  upload-linux-arm64-binaries:
-    needs:
-      - static-binaries-linux
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+  #     - name: Download static linux binaries
+  #       if: runner.os == 'Linux'
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: static-binaries-linux-${{ runner.arch }}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  #     - name: Make static linux binaries executable
+  #       if: runner.os == 'Linux'
+  #       run: |
+  #         chmod +x ninja/ninja
+  #         chmod +x _build/install/default/bin/*
 
-      - name: Download static linux binaries
-        if: runner.os == 'Linux'
-        uses: actions/download-artifact@v3
-        with:
-          name: static-binaries-linux-${{ runner.arch }}
+  #     - name: Use Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 16
 
-      - name: Make static linux binaries executable
-        if: runner.os == 'Linux'
-        run: |
-          chmod +x ninja/ninja
-          chmod +x _build/install/default/bin/*
+  #     - name: Copy exes to platform bin dirs
+  #       run: node ./scripts/copyExes.js
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+  #     - name: Prepare artifact upload
+  #       run: node .github/workflows/get_artifact_info.js
 
-      - name: Copy exes to platform bin dirs
-        run: node ./scripts/copyExes.js
-
-      - name: Prepare artifact upload
-        run: node .github/workflows/get_artifact_info.js
-
-      - name: "Upload artifacts: binaries"
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ env.artifact_name }}
-          path: ${{ env.artifact_path }}
+  #     - name: "Upload artifacts: binaries"
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ env.artifact_name }}
+  #         path: ${{ env.artifact_path }}
 
   build:
-    needs: static-binaries-linux
+    # needs: static-binaries-linux
 
     strategy:
       fail-fast: false
       matrix:
         os: [
-            macos-13, # x64
-            macos-14, # ARM
+            # macos-13, # x64
+            # macos-14, # ARM
             ubuntu-latest,
-            windows-latest,
+            buildjet-2vcpu-ubuntu-2204-arm,
+            # windows-latest,
           ]
         ocaml_compiler: [5.1.1]
 
@@ -123,6 +119,8 @@ jobs:
       DUNE_PROFILE: release
 
     steps:
+      - run: id
+
       - name: "Windows: Set git to use LF"
         if: runner.os == 'Windows'
         run: |
@@ -130,21 +128,23 @@ jobs:
           git config --global core.eol lf
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2 # to be able to check for changes in subfolder jscomp/syntax later
 
-      - name: Download static linux binaries
+      - name: "Linux: Build static compiler binaries"
         if: runner.os == 'Linux'
-        uses: actions/download-artifact@v3
+        uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
         with:
-          name: static-binaries-linux-${{ runner.arch }}
+          args: id
 
-      - name: Make static linux binaries executable
+      - name: "Linux: Build static ninja binary"
         if: runner.os == 'Linux'
-        run: |
-          chmod +x ninja/ninja
-          chmod +x _build/install/default/bin/*
+        uses: docker://ghcr.io/rescript-lang/rescript-ci-build:alpine-3.19-ocaml-5.1.1-01
+        with:
+          args: sh -c "cd ninja && LDFLAGS=-static python3 configure.py --bootstrap"
+
+      - run: ls -l ninja/ninja
 
       - name: Use OCaml ${{matrix.ocaml_compiler}}
         uses: ocaml/setup-ocaml@v2
@@ -174,7 +174,7 @@ jobs:
         run: opam exec -- dune build --display quiet --profile release
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
 
@@ -183,7 +183,7 @@ jobs:
 
       - name: "Windows: Use MSVC for ninja build"
         if: runner.os == 'Windows'
-        uses: TheMrMilchmann/setup-msvc-dev@v2
+        uses: TheMrMilchmann/setup-msvc-dev@v3
         with:
           arch: x64
 
@@ -263,14 +263,14 @@ jobs:
         run: node .github/workflows/get_artifact_info.js
 
       - name: "Upload artifacts: binaries"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
           path: ${{ env.artifact_path }}
 
       - name: "Upload artifacts: lib/ocaml"
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lib-ocaml
           path: lib/ocaml
@@ -281,10 +281,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
 
@@ -292,7 +292,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Move artifacts
         run: ./scripts/moveArtifacts.sh
@@ -315,7 +315,7 @@ jobs:
         run: node .github/workflows/prepare_package_upload.js ${{ github.event.pull_request.head.sha }}
 
       - name: "Upload artifact: npm packages"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: npm-packages
           path: |
@@ -342,15 +342,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: npm-packages
           path: packages/test
@@ -374,16 +374,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org # Needed to make auth work for publishing
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: npm-packages
 
