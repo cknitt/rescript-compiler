@@ -85,8 +85,8 @@
 
 - Refactor parser token handling to separate inspection (`peek`/`peek2`) from consumption, removing Diamond mode and `prev_end_pos` bookkeeping and moving missing JSX prop recovery from an editor-analysis regex heuristic into the parser. https://github.com/rescript-lang/rescript/pull/8633
 - Ship the experimental OCaml rewatch implementation as the default `rescript`
-  executable in Linux and macOS platform packages, retaining `rescript-rust` as
-  a fallback while Windows continues to use the Rust implementation.
+  executable in Linux, macOS, and Windows platform packages, retaining
+  `rescript-rust` as a fallback on every platform.
   https://github.com/cknitt/rescript/pull/22
 - Use the maintained `re` matcher for source filters in the experimental OCaml build system, compiling each filter once and supporting common regular-expression groups, alternation, shorthand classes, and repetition. https://github.com/cknitt/rescript/pull/22
 - Developer playground: Make panes resizable with wrapping text. https://github.com/rescript-lang/rescript/pull/8628
